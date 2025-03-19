@@ -56,6 +56,42 @@ services:
     command: >
       sh -c "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && yarn start"
 
+  # 新增Python后端服务，实现Redis缓存功能
+  python-redis-backend:
+    build:
+      context: ./python_backend
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_PASSWORD=
+      - CACHE_EXPIRATION=300
+      - SEARXNG_API_URL=http://searxng:8080
+    depends_on:
+      - redis
+      - searxng
+    ports:
+      - 8000:8000
+    volumes:
+      - ./python_backend:/app
+    networks:
+      - perplexica-network
+    restart: unless-stopped
+
+  # 新增Redis服务
+  redis:
+    image: redis:7-alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-data:/data
+    networks:
+      - perplexica-network
+    restart: unless-stopped
+    # 配置Redis最大内存和过期策略
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+
   postgres:
     image: postgres:latest
     environment:
@@ -96,3 +132,4 @@ volumes:
   uploads:
   postgres-data:
   ollama-data:
+  redis-data: # 新增Redis数据卷

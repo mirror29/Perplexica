@@ -30,6 +30,8 @@ cd Perplexica
 
 ### 2. 启动所有服务
 
+创建.env文件，并复制.env.example内容
+
 一键启动所有服务（包括自动下载和运行 llama3.2:1b 模型）：
 
 ```bash
@@ -37,6 +39,7 @@ docker compose up -d
 ```
 
 > **注意**:
+>
 > - 首次启动时会自动下载 llama3.2:1b 模型（约1.5GB），请确保有良好的网络连接
 > - 下载过程可能需要几分钟时间，取决于您的网络速度
 > - 整个启动过程可能需要5-10分钟，请耐心等待
@@ -108,7 +111,7 @@ docker compose restart perplexica-backend
 
 ### 7. 配置大模型API
 
-如果您需要使用其他API（如OpenAI、Anthropic等），可以编辑`config.toml`文件，填入相应的API密钥：
+如果您需要使用其他API（如OpenAI、Anthropic等），可以编辑 `config.toml`文件，填入相应的API密钥：
 
 ```bash
 # 编辑配置文件
