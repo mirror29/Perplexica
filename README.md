@@ -24,7 +24,7 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/your-username/Perplexica.git
+git clone https://github.com/mirror29/Perplexica.git
 cd Perplexica
 ```
 
