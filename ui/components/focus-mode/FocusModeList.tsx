@@ -28,16 +28,15 @@ export function FocusModeList({ modes, onEdit, onDelete }: FocusModeListProps) {
   }, [modes]);
 
   // 处理删除动画
-  const handleDelete = async (id: string) => {
-    setVisibleItems((prev) => ({ ...prev, [id]: false }));
-    // 等待动画完成后调用删除回调
-    setTimeout(() => {
-      onDelete(id);
-    }, 300);
+  const handleDelete = (id: string) => {
+    // 直接调用父组件的onDelete方法，确认对话框会在父组件中显示
+    // 父组件会处理用户确认和实际删除逻辑
+    onDelete(id);
+    // 删除视觉上的动画效果由父组件完成删除后的状态更新触发
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-y-auto">
       {modes.map((mode, index) => (
         <div key={mode.id} style={{ transitionDelay: `${index * 50}ms` }}>
           <Transition

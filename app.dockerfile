@@ -10,6 +10,7 @@ WORKDIR /home/perplexica
 COPY ui /home/perplexica/
 
 RUN yarn install --frozen-lockfile
+RUN npx prisma generate
 RUN yarn build
 
 CMD ["yarn", "start"]

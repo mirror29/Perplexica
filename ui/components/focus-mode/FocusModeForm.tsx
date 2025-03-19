@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Fragment } from 'react';
 import {
@@ -18,6 +18,13 @@ interface FocusModeFormProps {
   ) => Promise<void>; // 提交表单的回调函数
 }
 
+// API 来源选项
+const API_SOURCES = [
+  { value: 'backend', label: 'Backend Service' },
+  { value: 'searxng', label: 'SearxNG Service' },
+  { value: 'custom', label: 'Custom API' },
+];
+
 export function FocusModeForm({
   mode,
   isOpen,
@@ -26,13 +33,62 @@ export function FocusModeForm({
 }: FocusModeFormProps) {
   // 表单数据状态
   const [formData, setFormData] = useState<CreateFocusModeInput>({
-    name: mode?.name || '',
-    description: mode?.description || '',
-    apiEndpoint: mode?.apiEndpoint || '',
-    config: mode?.config || {},
+    name: '',
+    description: '',
+    apiEndpoint: '',
+    config: {
+      temperature: 0.7,
+      maxTokens: 1000,
+      apiSource: 'backend',
+      systemPrompt: '',
+      searchEnabled: false,
+    },
   });
   const [isSubmitting, setIsSubmitting] = useState(false); // 提交状态
   const [error, setError] = useState<string | null>(null); // 错误信息
+
+  // 当编辑模式时，加载模式数据
+  useEffect(() => {
+    if (mode && isOpen) {
+      setFormData({
+        name: mode.name || '',
+        description: mode.description || '',
+        apiEndpoint: mode.apiEndpoint || '',
+        config: mode.config || {
+          temperature: 0.7,
+          maxTokens: 1000,
+          apiSource: 'backend',
+          systemPrompt: '',
+          searchEnabled: false,
+        },
+      });
+    } else if (!mode && isOpen) {
+      // 重置表单，创建新模式时
+      setFormData({
+        name: '',
+        description: '',
+        apiEndpoint: '',
+        config: {
+          temperature: 0.7,
+          maxTokens: 1000,
+          apiSource: 'backend',
+          systemPrompt: '',
+          searchEnabled: false,
+        },
+      });
+    }
+  }, [mode, isOpen]);
+
+  // 更新配置项
+  const updateConfig = (key: string, value: any) => {
+    setFormData({
+      ...formData,
+      config: {
+        ...formData.config,
+        [key]: value,
+      },
+    });
+  };
 
   // 处理表单提交
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,7 +160,10 @@ export function FocusModeForm({
                 </div>
 
                 {/* 表单内容 */}
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form
+                  onSubmit={handleSubmit}
+                  className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
+                >
                   {/* 名称输入字段 */}
                   <div>
                     <label
@@ -123,7 +182,7 @@ export function FocusModeForm({
                         setFormData({ ...formData, name: e.target.value })
                       }
                       className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-blue-400 dark:focus:ring-blue-400"
-                      placeholder="Enter Focus Mode name"
+                      placeholder="Enter mode name"
                     />
                   </div>
 
@@ -150,6 +209,30 @@ export function FocusModeForm({
                     />
                   </div>
 
+                  {/* API 来源选择 */}
+                  <div>
+                    <label
+                      htmlFor="apiSource"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      API Source
+                    </label>
+                    <select
+                      id="apiSource"
+                      value={formData.config?.apiSource || 'backend'}
+                      onChange={(e) =>
+                        updateConfig('apiSource', e.target.value)
+                      }
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+                    >
+                      {API_SOURCES.map((source) => (
+                        <option key={source.value} value={source.value}>
+                          {source.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* API 端点输入字段 */}
                   <div>
                     <label
@@ -161,7 +244,7 @@ export function FocusModeForm({
                     <input
                       type="url"
                       id="apiEndpoint"
-                      value={formData.apiEndpoint}
+                      value={formData.apiEndpoint || ''}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -172,6 +255,110 @@ export function FocusModeForm({
                       placeholder="Enter API endpoint URL"
                     />
                   </div>
+
+                  {/* 温度设置 */}
+                  <div>
+                    <label
+                      htmlFor="temperature"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Temperature ({formData.config?.temperature || 0.7})
+                    </label>
+                    <input
+                      type="range"
+                      id="temperature"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      value={formData.config?.temperature || 0.7}
+                      onChange={(e) =>
+                        updateConfig('temperature', parseFloat(e.target.value))
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* 最大令牌数 */}
+                  <div>
+                    <label
+                      htmlFor="maxTokens"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Max Tokens
+                    </label>
+                    <input
+                      type="number"
+                      id="maxTokens"
+                      min="100"
+                      max="4000"
+                      value={formData.config?.maxTokens || 1000}
+                      onChange={(e) =>
+                        updateConfig('maxTokens', parseInt(e.target.value))
+                      }
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+                    />
+                  </div>
+
+                  {/* 系统提示词 */}
+                  <div>
+                    <label
+                      htmlFor="systemPrompt"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      System Prompt
+                    </label>
+                    <textarea
+                      id="systemPrompt"
+                      value={formData.config?.systemPrompt || ''}
+                      onChange={(e) =>
+                        updateConfig('systemPrompt', e.target.value)
+                      }
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+                      rows={3}
+                      placeholder="Enter system prompt"
+                    />
+                  </div>
+
+                  {/* 启用搜索 */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="searchEnabled"
+                      checked={formData.config?.searchEnabled || false}
+                      onChange={(e) =>
+                        updateConfig('searchEnabled', e.target.checked)
+                      }
+                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+                    />
+                    <label
+                      htmlFor="searchEnabled"
+                      className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
+                    >
+                      Enable Search
+                    </label>
+                  </div>
+
+                  {/* 搜索源 (当启用搜索时才显示) */}
+                  {formData.config?.searchEnabled && (
+                    <div>
+                      <label
+                        htmlFor="searchSource"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      >
+                        Search Source
+                      </label>
+                      <input
+                        type="url"
+                        id="searchSource"
+                        value={formData.config?.searchSource || ''}
+                        onChange={(e) =>
+                          updateConfig('searchSource', e.target.value)
+                        }
+                        className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:border-blue-400 dark:focus:ring-blue-400"
+                        placeholder="Enter search source URL"
+                      />
+                    </div>
+                  )}
 
                   {/* 错误提示 */}
                   {error && (

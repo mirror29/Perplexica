@@ -47,7 +47,7 @@ export default function FocusModesPage() {
       } else {
         // 创建
         const created = await focusModeService.create(data);
-        setModes([...modes, created]);
+        setModes([created, ...modes]);
         toast.success('Focus Mode created successfully');
       }
     } catch (error) {
@@ -58,14 +58,17 @@ export default function FocusModesPage() {
 
   // 处理删除
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this Focus Mode?')) return;
-
-    try {
-      await focusModeService.delete(id);
-      setModes(modes.filter((m) => m.id !== id));
-      toast.success('Focus Mode deleted successfully');
-    } catch (error) {
-      toast.error('Delete failed');
+    // 显示确认对话框
+    if (confirm('Are you sure you want to delete this Focus Mode?')) {
+      try {
+        // 发送删除请求
+        await focusModeService.delete(id);
+        // 更新状态，从列表中移除已删除的模式
+        setModes(modes.filter((m) => m.id !== id));
+        toast.success('Focus Mode deleted successfully');
+      } catch (error) {
+        toast.error('Delete failed');
+      }
     }
   };
 

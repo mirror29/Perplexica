@@ -16,8 +16,11 @@ services:
     image: itzcrazykns1337/perplexica-backend:main
     environment:
       - SEARXNG_API_URL=http://searxng:8080
+      - DATABASE_URL=postgresql://perplexica:perplexica123@postgres:5432/perplexica?schema=public
     depends_on:
       - searxng
+      - postgres
+      - ollama
     ports:
       - 3001:3001
     volumes:
@@ -38,13 +41,52 @@ services:
         - NEXT_PUBLIC_API_URL=http://127.0.0.1:3001/api
         - NEXT_PUBLIC_WS_URL=ws://127.0.0.1:3001
     image: itzcrazykns1337/perplexica-frontend:main
+    environment:
+      - DATABASE_URL=postgresql://perplexica:perplexica123@postgres:5432/perplexica?schema=public
     depends_on:
       - perplexica-backend
+      - postgres
     ports:
       - 3000:3000
+    volumes:
+      - ./ui/.env:/home/perplexica/.env
     networks:
       - perplexica-network
     restart: unless-stopped
+    command: >
+      sh -c "npx prisma generate && npx prisma migrate deploy && npx prisma db seed && yarn start"
+
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=perplexica
+      - POSTGRES_PASSWORD=perplexica123
+      - POSTGRES_DB=perplexica
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - perplexica-network
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - 11435:11434
+    networks:
+      - perplexica-network
+    restart: unless-stopped
+    entrypoint: >
+      /bin/sh -c "
+      /bin/ollama serve &
+      sleep 10 &&
+      /bin/ollama pull llama3.2:1b &&
+      /bin/ollama run llama3.2:1b &
+      tail -f /dev/null
+      "
 
 networks:
   perplexica-network:
@@ -52,3 +94,5 @@ networks:
 volumes:
   backend-dbstore:
   uploads:
+  postgres-data:
+  ollama-data:

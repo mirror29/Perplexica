@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import {
   CreateFocusModeInput,
   UpdateFocusModeInput,
 } from '@/lib/types/focus-mode';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 // GET /api/focus-modes
 export async function GET() {

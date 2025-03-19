@@ -3,6 +3,7 @@ FROM node:18-slim
 WORKDIR /home/perplexica
 
 COPY src /home/perplexica/src
+COPY prisma /home/perplexica/prisma
 COPY tsconfig.json /home/perplexica/
 COPY drizzle.config.ts /home/perplexica/
 COPY package.json /home/perplexica/
@@ -12,6 +13,7 @@ RUN mkdir /home/perplexica/data
 RUN mkdir /home/perplexica/uploads
 
 RUN yarn install --frozen-lockfile --network-timeout 600000
+RUN yarn prisma:generate
 RUN yarn build
 
 CMD ["yarn", "start"]
