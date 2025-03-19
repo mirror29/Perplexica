@@ -1,0 +1,25 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// Focus Mode model for managing different focus modes
+model FocusMode {
+    id          String   @id @default(cuid())
+    name        String   @db.VarChar(100)
+    description String?  @db.Text
+    apiEndpoint String?  @db.VarChar(255)
+    config      Json? // Store mode-specific configuration
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt
+    isActive    Boolean  @default(true)
+
+    @@map("focus_modes")
+}

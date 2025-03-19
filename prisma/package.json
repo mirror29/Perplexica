@@ -1,0 +1,14 @@
+{
+  "name": "perplexica-prisma",
+  "version": "1.0.0",
+  "scripts": {
+    "seed": "ts-node seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}
