@@ -12,6 +12,75 @@
 - **搜索引擎 (searxng)**: SearxNG搜索服务，提供网络搜索功能
 - **大模型 (ollama)**: Ollama本地大模型服务，提供AI问答能力，自动加载 llama3.2:1b 模型
 
+## 项目目录结构
+
+```
+Perplexica/
+├── ui/                      # 前端代码
+│   ├── app/                 # Next.js应用
+│   │   ├── api/             # 前端API路由
+│   │   │   ├── text-to-image/ # 文字转图片API
+│   │   │   ├── mcp_server/  # MCP服务器API
+│   │   │   └── focus-modes/ # 焦点模式API
+│   ├── components/          # React组件
+│   ├── lib/                 # 工具函数
+│   ├── types/               # TypeScript类型定义
+│   └── prisma/              # Prisma数据库配置
+├── src/                     # 后端代码
+│   ├── routes/              # 后端API路由
+│   │   ├── chats.ts         # 聊天API
+│   │   ├── search.ts        # 搜索API
+│   │   ├── images.ts        # 图片API
+│   │   ├── videos.ts        # 视频API
+│   │   └── uploads.ts       # 文件上传API
+│   ├── lib/                 # 工具库
+│   ├── db/                  # 数据库操作
+│   └── websocket/           # WebSocket服务
+├── python_backend/          # Python后端服务
+│   └── app.py               # Redis缓存服务
+├── mcp-server/              # 模型上下文协议服务器
+├── docker-compose.yaml      # Docker配置
+└── config.toml              # 系统配置文件
+```
+
+## API接口说明
+
+### 前端API
+
+| 端点                 | 方法     | 描述               |
+| -------------------- | -------- | ------------------ |
+| `/api/text-to-image` | POST     | 将文本转换为图片   |
+| `/api/mcp_server`    | POST     | 与MCP服务器通信    |
+| `/api/focus-modes`   | GET/POST | 获取或设置焦点模式 |
+
+### 后端API
+
+| 端点                 | 方法 | 描述             |
+| -------------------- | ---- | ---------------- |
+| `/api/chat`          | POST | 创建新的聊天对话 |
+| `/api/chat/:id`      | GET  | 获取特定对话     |
+| `/api/search`        | GET  | 执行网络搜索     |
+| `/api/images/search` | GET  | 搜索图片         |
+| `/api/videos/search` | GET  | 搜索视频         |
+| `/api/uploads`       | POST | 上传文件         |
+| `/api/suggestions`   | GET  | 获取对话建议     |
+| `/api/config`        | GET  | 获取系统配置     |
+
+### WebSocket API
+
+聊天功能通过WebSocket提供流式响应，连接地址为:
+```
+ws://localhost:3001/ws
+```
+
+### Python后端API
+
+| 端点           | 方法 | 描述         |
+| -------------- | ---- | ------------ |
+| `/search`      | GET  | 带缓存的搜索 |
+| `/health`      | GET  | 健康检查     |
+| `/cache/clear` | POST | 清除缓存     |
+
 ## 前置需求
 
 - Docker 和 Docker Compose

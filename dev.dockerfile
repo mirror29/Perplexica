@@ -19,14 +19,19 @@ RUN apk add --no-cache \
 
 WORKDIR /home/perplexica
 
-COPY ui /home/perplexica/
-COPY start-mcp-server.sh /home/perplexica/start-mcp-server
+# Copy package.json and yarn.lock first for better caching
+COPY ui/package.json ui/yarn.lock ./
 
+# Install dependencies
 RUN yarn install --frozen-lockfile
+
+# Copy the rest of the application
+COPY ui/ ./
+COPY start-mcp-server.sh ./start-mcp-server
+
+# Generate Prisma client but don't build the app
 RUN npx prisma generate
-# Don't build in production mode for development
-# RUN yarn build
-RUN chmod +x /home/perplexica/start-mcp-server
+RUN chmod +x ./start-mcp-server
 
 # Use development server with hot reloading
 CMD ["yarn", "dev"]

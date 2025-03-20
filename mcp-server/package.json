@@ -1,0 +1,16 @@
+{
+  "name": "perplexica-mcp-server",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for Perplexica",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start:http": "node http-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "canvas": "^3.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

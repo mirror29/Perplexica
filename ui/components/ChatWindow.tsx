@@ -12,22 +12,13 @@ import { getSuggestions } from '@/lib/actions';
 import { Settings } from 'lucide-react';
 import Link from 'next/link';
 import NextError from 'next/error';
+import { Message, File } from '@/types/MessageTypes';
 
-export type Message = {
-  messageId: string;
-  chatId: string;
-  createdAt: Date;
-  content: string;
-  role: 'user' | 'assistant';
-  suggestions?: string[];
-  sources?: Document[];
-};
+// Python后端API URL常量
+const PYTHON_BACKEND_URL =
+  process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://localhost:8000';
 
-export interface File {
-  fileName: string;
-  fileExtension: string;
-  fileId: string;
-}
+export type { Message, File };
 
 const useSocket = (
   url: string,
@@ -392,6 +383,9 @@ const ChatWindow = ({ id }: { id?: string }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [fileIds, setFileIds] = useState<string[]>([]);
 
+  // 添加chatHistoryRef引用，用于追踪最新的聊天历史
+  const chatHistoryRef = useRef<[string, string][]>([]);
+
   const [focusMode, setFocusMode] = useState('webSearch');
   const [optimizationMode, setOptimizationMode] = useState('speed');
 
@@ -442,6 +436,13 @@ const ChatWindow = ({ id }: { id?: string }) => {
     messagesRef.current = messages;
   }, [messages]);
 
+  // 添加一个effect来更新chatHistoryRef
+  useEffect(() => {
+    chatHistoryRef.current = chatHistory;
+    // 记录聊天历史更新，便于调试
+    console.debug(new Date(), 'chat_history:updated', chatHistory);
+  }, [chatHistory]);
+
   useEffect(() => {
     if (isMessagesLoaded && isWSReady) {
       setIsReady(true);
@@ -467,6 +468,106 @@ const ChatWindow = ({ id }: { id?: string }) => {
 
     messageId = messageId ?? crypto.randomBytes(7).toString('hex');
 
+    try {
+      const response = await fetch(`${PYTHON_BACKEND_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: message,
+        }),
+      });
+
+      if (response.ok) {
+        const cacheResult = await response.json();
+
+        if (cacheResult && cacheResult.response) {
+          // 缓存命中，直接使用缓存结果
+          setMessages((prevMessages) => [
+            ...prevMessages,
+            {
+              content: message,
+              messageId: messageId,
+              chatId: chatId!,
+              role: 'user',
+              createdAt: new Date(),
+            },
+            {
+              content: cacheResult.response,
+              messageId:
+                cacheResult.id || crypto.randomBytes(7).toString('hex'),
+              chatId: chatId!,
+              role: 'assistant',
+              messages: cacheResult.messages || [],
+              context: cacheResult.context || '',
+              fromCache: cacheResult.fromCache || true,
+              createdAt: new Date(),
+            },
+          ]);
+
+          // 更新聊天历史
+          setChatHistory((prevHistory) => {
+            const lastTwoEntries = prevHistory.slice(-2);
+            const isPairExist =
+              lastTwoEntries.length === 2 &&
+              lastTwoEntries[0][0] === 'human' &&
+              lastTwoEntries[0][1] === message &&
+              lastTwoEntries[1][0] === 'assistant' &&
+              lastTwoEntries[1][1] === cacheResult.response;
+
+            return isPairExist
+              ? prevHistory
+              : [
+                  ...prevHistory,
+                  ['human', message],
+                  ['assistant', cacheResult.response],
+                ];
+          });
+
+          setLoading(false);
+          setMessageAppeared(true);
+
+          // 确保chatHistory正确更新 - 等待下一个事件循环
+          setTimeout(() => {
+            console.debug(
+              'Verifying chat history after cache hit:',
+              chatHistoryRef.current,
+            );
+            const hasUserMsg = chatHistoryRef.current.some(
+              (entry) => entry[0] === 'human' && entry[1] === message,
+            );
+            const hasAssistantMsg = chatHistoryRef.current.some(
+              (entry) =>
+                entry[0] === 'assistant' && entry[1] === cacheResult.response,
+            );
+
+            if (!hasUserMsg || !hasAssistantMsg) {
+              console.debug(
+                'Fixing missing chat history entries after cache hit',
+              );
+              setChatHistory((prev) => {
+                const updatedHistory = [...prev];
+                if (!hasUserMsg) {
+                  updatedHistory.push(['human', message]);
+                }
+                if (!hasAssistantMsg) {
+                  updatedHistory.push(['assistant', cacheResult.response]);
+                }
+                return updatedHistory;
+              });
+            }
+          }, 0);
+
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking cache:', error);
+      // 如果缓存检查失败，继续使用WebSocket连接
+    }
+
+    // 如果没有命中缓存，继续使用WebSocket连接
     ws.send(
       JSON.stringify({
         type: 'message',
@@ -478,7 +579,6 @@ const ChatWindow = ({ id }: { id?: string }) => {
         files: fileIds,
         focusMode: focusMode,
         optimizationMode: optimizationMode,
-        history: [...chatHistory, ['human', message]],
       }),
     );
 
@@ -512,7 +612,7 @@ const ChatWindow = ({ id }: { id?: string }) => {
               messageId: data.messageId,
               chatId: chatId!,
               role: 'assistant',
-              sources: sources,
+              messages: sources,
               createdAt: new Date(),
             },
           ]);
@@ -530,7 +630,7 @@ const ChatWindow = ({ id }: { id?: string }) => {
               messageId: data.messageId,
               chatId: chatId!,
               role: 'assistant',
-              sources: sources,
+              messages: sources,
               createdAt: new Date(),
             },
           ]);
@@ -552,21 +652,36 @@ const ChatWindow = ({ id }: { id?: string }) => {
       }
 
       if (data.type === 'messageEnd') {
-        setChatHistory((prevHistory) => [
-          ...prevHistory,
-          ['human', message],
-          ['assistant', recievedMessage],
-        ]);
-
         ws?.removeEventListener('message', messageHandler);
         setLoading(false);
 
         const lastMsg = messagesRef.current[messagesRef.current.length - 1];
 
+        // 保存结果到Redis缓存，简化存储逻辑
+        try {
+          const response = await fetch(`${PYTHON_BACKEND_URL}/api/chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              query: message,
+              response: recievedMessage,
+              messages: sources || [],
+              context: '', // 添加context字段
+            }),
+          });
+
+          const cacheResult = await response.json();
+          console.log('Saved to Redis cache', cacheResult);
+        } catch (error) {
+          console.error('Error saving to cache:', error);
+        }
+
         if (
           lastMsg.role === 'assistant' &&
-          lastMsg.sources &&
-          lastMsg.sources.length > 0 &&
+          lastMsg.messages &&
+          lastMsg.messages.length > 0 &&
           !lastMsg.suggestions
         ) {
           const suggestions = await getSuggestions(messagesRef.current);

@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from 'react';
 import MessageInput from './MessageInput';
-import { File, Message } from './ChatWindow';
+import { File, Message } from '@/types/MessageTypes';
 import MessageBox from './MessageBox';
 import MessageBoxLoading from './MessageBoxLoading';
 

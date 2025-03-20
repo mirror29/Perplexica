@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import React, { MutableRefObject, useEffect, useState } from 'react';
-import { Message } from './ChatWindow';
+import { Message } from '@/types/MessageTypes';
 import { cn } from '@/lib/utils';
 import {
   BookCopy,
@@ -11,6 +11,7 @@ import {
   StopCircle,
   Layers3,
   Plus,
+  Database,
 } from 'lucide-react';
 import Markdown from 'markdown-to-jsx';
 import Copy from './MessageActions/Copy';
@@ -18,6 +19,7 @@ import Rewrite from './MessageActions/Rewrite';
 import MessageSources from './MessageSources';
 import SearchImages from './SearchImages';
 import SearchVideos from './SearchVideos';
+import TextToImage from './TextToImage';
 import { useSpeech } from 'react-text-to-speech';
 
 const MessageBox = ({
@@ -47,21 +49,21 @@ const MessageBox = ({
 
     if (
       message.role === 'assistant' &&
-      message?.sources &&
-      message.sources.length > 0
+      message?.messages &&
+      message.messages.length > 0
     ) {
       return setParsedMessage(
         message.content.replace(
           regex,
           (_, number) =>
-            `<a href="${message.sources?.[number - 1]?.metadata?.url}" target="_blank" className="bg-light-secondary dark:bg-dark-secondary px-1 rounded ml-1 no-underline text-xs text-black/70 dark:text-white/70 relative">${number}</a>`,
+            `<a href="${message.messages?.[number - 1]?.metadata?.url}" target="_blank" className="bg-light-secondary dark:bg-dark-secondary px-1 rounded ml-1 no-underline text-xs text-black/70 dark:text-white/70 relative">${number}</a>`,
         ),
       );
     }
 
     setSpeechMessage(message.content.replace(regex, ''));
     setParsedMessage(message.content);
-  }, [message.content, message.sources, message.role]);
+  }, [message.content, message.messages, message.role]);
 
   const { speechStatus, start, stop } = useSpeech({ text: speechMessage });
 
@@ -87,7 +89,7 @@ const MessageBox = ({
             ref={dividerRef}
             className="flex flex-col space-y-6 w-full lg:w-9/12"
           >
-            {message.sources && message.sources.length > 0 && (
+            {message.messages && message.messages.length > 0 && (
               <div className="flex flex-col space-y-2">
                 <div className="flex flex-row items-center space-x-2">
                   <BookCopy className="text-black dark:text-white" size={20} />
@@ -95,7 +97,7 @@ const MessageBox = ({
                     Sources
                   </h3>
                 </div>
-                <MessageSources sources={message.sources} />
+                <MessageSources sources={message.messages} />
               </div>
             )}
             <div className="flex flex-col space-y-2">
@@ -110,6 +112,12 @@ const MessageBox = ({
                 <h3 className="text-black dark:text-white font-medium text-xl">
                   Answer
                 </h3>
+                {message.fromCache && (
+                  <div className="flex items-center text-xs bg-light-secondary dark:bg-dark-secondary px-2 py-1 rounded text-black/60 dark:text-white/60">
+                    <Database size={12} className="mr-1" />
+                    缓存结果
+                  </div>
+                )}
               </div>
               <Markdown
                 className={cn(
@@ -119,6 +127,19 @@ const MessageBox = ({
               >
                 {parsedMessage}
               </Markdown>
+              {!loading &&
+                isLast &&
+                history.length > 0 &&
+                history[messageIndex - 1] && (
+                  <TextToImage
+                    text={
+                      message.role === 'assistant' && history[messageIndex - 1]
+                        ? history[messageIndex - 1].content
+                        : message.content
+                    }
+                    userQuery={history[messageIndex - 1].content}
+                  />
+                )}
               {loading && isLast ? null : (
                 <div className="flex flex-row items-center justify-between w-full text-black dark:text-white py-4 -mx-2">
                   <div className="flex flex-row items-center space-x-1">
@@ -191,12 +212,12 @@ const MessageBox = ({
           </div>
           <div className="lg:sticky lg:top-20 flex flex-col items-center space-y-3 w-full lg:w-3/12 z-30 h-full pb-4">
             <SearchImages
-              query={history[messageIndex - 1].content}
+              query={history[messageIndex - 1]?.content || ''}
               chatHistory={history.slice(0, messageIndex - 1)}
             />
             <SearchVideos
               chatHistory={history.slice(0, messageIndex - 1)}
-              query={history[messageIndex - 1].content}
+              query={history[messageIndex - 1]?.content || ''}
             />
           </div>
         </div>
