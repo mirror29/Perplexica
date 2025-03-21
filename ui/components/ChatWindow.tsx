@@ -12,13 +12,35 @@ import { getSuggestions } from '@/lib/actions';
 import { Settings } from 'lucide-react';
 import Link from 'next/link';
 import NextError from 'next/error';
-import { Message, File } from '@/types/MessageTypes';
+import { Message, File, MessageSource } from '@/types/MessageTypes';
 
 // Python后端API URL常量
 const PYTHON_BACKEND_URL =
   process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || 'http://localhost:8000';
 
 export type { Message, File };
+
+// 适配Document类型为MessageSource
+interface DocumentWithTitle extends Document {
+  title: string;
+  metadata: {
+    url: string;
+    date?: string;
+    snippet?: string;
+  };
+}
+
+// 转换Document到MessageSource的函数
+const convertDocumentToMessageSource = (doc: Document): MessageSource => {
+  return {
+    title: (doc as any).title || '未命名文档',
+    metadata: {
+      url: (doc as any).metadata?.url || '',
+      date: (doc as any).metadata?.date,
+      snippet: (doc as any).metadata?.snippet,
+    },
+  };
+};
 
 const useSocket = (
   url: string,
@@ -325,9 +347,11 @@ const loadMessages = async (
   const data = await res.json();
 
   const messages = data.messages.map((msg: any) => {
+    const metadata = JSON.parse(msg.metadata || '{}');
     return {
       ...msg,
-      ...JSON.parse(msg.metadata),
+      ...metadata,
+      createdAt: metadata.createdAt ? new Date(metadata.createdAt) : new Date(),
     };
   }) as Message[];
 
@@ -462,7 +486,7 @@ const ChatWindow = ({ id }: { id?: string }) => {
     setLoading(true);
     setMessageAppeared(false);
 
-    let sources: Document[] | undefined = undefined;
+    let sources: MessageSource[] | undefined = undefined;
     let recievedMessage = '';
     let added = false;
 
@@ -603,13 +627,17 @@ const ChatWindow = ({ id }: { id?: string }) => {
       }
 
       if (data.type === 'sources') {
-        sources = data.data;
+        // 使用类型断言确保类型安全
+        sources = (data.data || []).map((doc: any) =>
+          convertDocumentToMessageSource(doc),
+        );
+
         if (!added) {
           setMessages((prevMessages) => [
             ...prevMessages,
             {
               content: '',
-              messageId: data.messageId,
+              messageId: messageId!,
               chatId: chatId!,
               role: 'assistant',
               messages: sources,

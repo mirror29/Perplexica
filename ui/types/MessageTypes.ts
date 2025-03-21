@@ -5,6 +5,7 @@ export interface Message {
   messages?: MessageSource[];
   suggestions?: string[];
   fromCache?: boolean;
+  createdAt: Date;
 }
 
 export interface MessageSource {

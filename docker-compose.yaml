@@ -16,11 +16,8 @@ services:
     image: itzcrazykns1337/perplexica-backend:main
     environment:
       - SEARXNG_API_URL=http://searxng:8080
-      - DATABASE_URL=postgresql://perplexica:perplexica123@postgres:5432/perplexica?schema=public
     depends_on:
       - searxng
-      - postgres
-      - ollama
     ports:
       - 3001:3001
     volumes:
@@ -32,32 +29,6 @@ services:
     networks:
       - perplexica-network
     restart: unless-stopped
-
-  perplexica-frontend:
-    build:
-      context: .
-      dockerfile: dev.dockerfile
-      args:
-        - NEXT_PUBLIC_API_URL=http://127.0.0.1:3001/api
-        - NEXT_PUBLIC_WS_URL=ws://127.0.0.1:3001
-    # Comment out the image line to force local build
-    # image: itzcrazykns1337/perplexica-frontend:main
-    environment:
-      - DATABASE_URL=postgresql://perplexica:perplexica123@postgres:5432/perplexica?schema=public
-      - NODE_ENV=development
-    depends_on:
-      - perplexica-backend
-      - postgres
-    ports:
-      - 3000:3000
-    volumes:
-      - ./ui/.env:/home/perplexica/.env
-      - ./ui/components:/home/perplexica/components  # Mount only the components directory
-      - ./ui/types:/home/perplexica/types  # Mount the types directory for TypeScript types
-    networks:
-      - perplexica-network
-    restart: unless-stopped
-    command: yarn dev
 
   # 新增Python后端服务，实现Redis缓存功能
   python-redis-backend:
@@ -95,6 +66,20 @@ services:
     # 配置Redis最大内存和过期策略
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
 
+  # 新增MCP服务器
+  mcp-server:
+    build:
+      context: ./mcp-server
+      dockerfile: Dockerfile
+    image: perplexica-mcp-server:latest
+    ports:
+      - 3007:3007
+    volumes:
+      - ./mcp-server/logs:/app/logs
+    networks:
+      - perplexica-network
+    restart: unless-stopped
+
   postgres:
     image: postgres:latest
     environment:
@@ -126,6 +111,33 @@ services:
       /bin/ollama run llama3.2:1b &
       tail -f /dev/null
       "
+
+  perplexica-frontend:
+    build:
+      context: .
+      dockerfile: app.dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://127.0.0.1:3001/api
+        - NEXT_PUBLIC_WS_URL=ws://127.0.0.1:3001
+        - NEXT_PUBLIC_MCP_SERVER_URL=http://mcp-server:3007
+    image: itzcrazykns1337/perplexica-frontend:main
+    environment:
+      - DATABASE_URL=postgresql://perplexica:perplexica123@postgres:5432/perplexica?schema=public
+      - NODE_ENV=development
+      - NEXT_PUBLIC_MCP_SERVER_URL=http://mcp-server:3007
+    depends_on:
+      - perplexica-backend
+      - postgres
+      - mcp-server
+    ports:
+      - 3000:3000
+    volumes:
+      - ./ui/.env:/home/perplexica/.env
+      - ./ui/components:/home/perplexica/components # Mount only the components directory
+      - ./ui/types:/home/perplexica/types # Mount the types directory for TypeScript types
+    networks:
+      - perplexica-network
+    restart: unless-stopped
 
 networks:
   perplexica-network:

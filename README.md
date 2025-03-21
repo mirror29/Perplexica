@@ -99,12 +99,10 @@ cd Perplexica
 
 ### 2. 启动所有服务
 
-创建.env文件，并复制.env.example内容
-
 一键启动所有服务（包括自动下载和运行 llama3.2:1b 模型）：
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 > **注意**:
@@ -147,7 +145,6 @@ ollama pull gemma:2b
 ```toml
 [MODELS.OLLAMA]
 API_URL = "http://ollama:11434"
-MODEL_NAME = "gemma:2b"  # 更新为新模型
 ```
 
 修改后重启后端服务：

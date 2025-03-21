@@ -25,12 +25,9 @@ const TextToImage: React.FC<TextToImageProps> = ({ text, userQuery }) => {
   const [retryCount, setRetryCount] = useState<number>(0);
   const autoRetryCount = useRef<number>(0); // 用于追踪自动重试次数
 
-  // 增强的意图检测 - 如果没有意图检测到，不显示组件
+  // 增强的意图检测
   const hasImageIntent =
     PerplexicaMcpClient.detectImageConversionIntent(userQuery);
-  if (!hasImageIntent && !imageUrl) {
-    return null;
-  }
 
   const handleGenerateImage = async (isAutoRetry = false): Promise<void> => {
     if (loading) return;
@@ -139,6 +136,11 @@ const TextToImage: React.FC<TextToImageProps> = ({ text, userQuery }) => {
     generateImageIfNeeded();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasImageIntent, imageUrl, loading]);
+
+  // 如果没有意图检测到，不显示组件
+  if (!hasImageIntent && !imageUrl) {
+    return null;
+  }
 
   const handleRetry = (): void => {
     setRetryCount(retryCount + 1);

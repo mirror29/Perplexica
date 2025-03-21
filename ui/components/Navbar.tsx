@@ -23,7 +23,7 @@ const Navbar = ({
       setTitle(newTitle);
       const newTimeAgo = formatTimeDifference(
         new Date(),
-        messages[0].createdAt,
+        messages[0].createdAt || new Date(),
       );
       setTimeAgo(newTimeAgo);
     }
@@ -34,7 +34,7 @@ const Navbar = ({
       if (messages.length > 0) {
         const newTimeAgo = formatTimeDifference(
           new Date(),
-          messages[0].createdAt,
+          messages[0].createdAt || new Date(),
         );
         setTimeAgo(newTimeAgo);
       }
